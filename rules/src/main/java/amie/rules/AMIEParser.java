@@ -14,6 +14,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 
 import javatools.datatypes.Pair;
 import javatools.filehandlers.FileLines;
+import javatools.filehandlers.TSVFile;
 
 /** 
  * Parses a file of AMIE rules
@@ -28,12 +29,27 @@ public class AMIEParser {
 	 * @param s
 	 * @return
 	 */
-	public static Rule rule(String s) {	
-		Pair<List<int[]>, int[]> rulePair = KB.rule(s);
+	public static Rule rule(String s) {
+		Pair<List<int[]>, int[]> rulePair = KB.rule(s.trim());
 		if(rulePair == null) return null;
 		Rule resultRule = new Rule(rulePair.second, rulePair.first, 0);
+		resultRule.setGeneration(resultRule.getLength());
 		return resultRule;
-	}	
+	}
+
+	public static Rule rule(List<String> record) {
+		Rule rule = rule(record.get(0));
+		if (rule == null)
+			return null;
+
+		if (record.size() > 1) {
+			rule.setSupport(Double.parseDouble(record.get(4)));
+			rule.setBodySize(Long.parseLong(record.get(5)));
+			rule.setPcaBodySize(Double.parseDouble(record.get(6)));
+		}
+
+		return rule;
+	}
   
 	public static void normalizeRule(Rule q){
 		char c = 'a';
@@ -54,27 +70,15 @@ public class AMIEParser {
 	}	
 
 	public static List<Rule> rules(File f) throws IOException {
-	    List<Rule> result=new ArrayList<>();
-	    for(String line : new FileLines(f)) {
-	    	ArrayList<int[]> triples=KB.triples(line);
-	    	if(triples==null || triples.size()<2) continue;      
-	    	int[] last=triples.get(triples.size()-1);
-	    	triples.remove(triples.size()-1);
-	    	triples.add(0, last);
-	    	Rule query=new Rule();
-	 
-	    	IntList variables = new IntArrayList();
-	    	for(int[] triple: triples){
-	    		if(!variables.contains(triple[0]))
-	    			variables.add(triple[0]);
-	    		if(!variables.contains(triple[2]))
-	    			variables.add(triple[2]);
-	    	}
-	      
-	    	query.setSupport(0);
-	    	query.setTriples(triples);
-	    	query.setFunctionalVariablePosition(0);
-	    	result.add(query);
+	    TSVFile tsvFile = new TSVFile((f));
+	    List<Rule> result = new ArrayList<>();
+	    for(List<String> record : tsvFile) {
+	        Rule q = AMIEParser.rule(record);
+
+	        if (q == null)
+	            continue;
+
+	        result.add(q);
 	    }
 	    return(result);
 	}
